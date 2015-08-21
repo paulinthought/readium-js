@@ -51,9 +51,11 @@ var PageOpenRequest = require('../models/page-open-request')
 var ReflowableView = require('./reflowable-view')
 var ResolveContentRef = require('../helpers/resolve-content-ref')
 var ScrollView = require('./scroll-view')
+var SimpleScrollView = require('./simple-scroll-view')
 var setStyles = require('../helpers/set-styles')
 var StyleCollection = require('../collections/style')
 var Switches = require('../models/switches')
+var TransitionalView = require('./transitional-view')
 var Trigger = require('../models/trigger')
 var ViewerSettings = require('../models/viewer-settings')
 
@@ -63,13 +65,15 @@ var ViewerSettings = require('../models/viewer-settings')
  * @property {number} VIEW_TYPE_COLUMNIZED          Reflowable document view
  * @property {number} VIEW_TYPE_FIXED               Fixed layout document view
  * @property {number} VIEW_TYPE_SCROLLED_DOC        Scrollable document view
+ * @property {number} VIEW_TYPE_SIMPLE_SCROLLED_DOC Simplified Scrollable document view
  * @property {number} VIEW_TYPE_SCROLLED_CONTINUOUS Continuous scrollable document view
  */
 var VIEW_TYPE_COLUMNIZED = 1;
 var VIEW_TYPE_FIXED = 2;
 var VIEW_TYPE_SCROLLED_DOC = 3;
+var VIEW_TYPE_SIMPLE_SCROLLED_DOC = 5;
 var VIEW_TYPE_SCROLLED_CONTINUOUS = 4;
-
+var VIEW_TYPE_TRANSITIONAL = 6;
 
 /**
  * Top level View object. Interface for view manipulation public APIs
@@ -154,6 +158,12 @@ function ReaderView(options) {
       case VIEW_TYPE_SCROLLED_CONTINUOUS:
         createdView = new ScrollView(options, true, self);
         break;
+      case VIEW_TYPE_SIMPLE_SCROLLED_DOC:
+        createdView = new SimpleScrollView(options, false, self);
+        break;
+      case VIEW_TYPE_TRANSITIONAL:
+        createdView = new TransitionalView(options, true, self);
+        break;      
       default:
         createdView = new ReflowableView(options, self);
         break;
@@ -188,6 +198,13 @@ function ReaderView(options) {
       return VIEW_TYPE_SCROLLED_DOC;
     }
 
+    if (_currentView instanceof SimpleScrollView) {
+      return VIEW_TYPE_SIMPLE_SCROLLED_DOC;
+    }
+
+    if (_currentView instanceof TransitionalView) {
+      return VIEW_TYPE_TRANSITIONAL;
+    }
     console.error("Unrecognized view type");
     return undefined;
   };
@@ -196,12 +213,20 @@ function ReaderView(options) {
   function deduceDesiredViewType(spineItem) {
 
     //check settings
-    if (_viewerSettings.scroll == "scroll-doc") {
+    if (_viewerSettings.scroll === "scroll-doc") {
       return VIEW_TYPE_SCROLLED_DOC;
     }
 
-    if (_viewerSettings.scroll == "scroll-continuous") {
+    if (_viewerSettings.scroll === "simple-scroll-doc") {
+      return VIEW_TYPE_SIMPLE_SCROLLED_DOC;
+    }
+
+    if (_viewerSettings.scroll === "scroll-continuous") {
       return VIEW_TYPE_SCROLLED_CONTINUOUS;
+    }
+
+    if (_viewerSettings.scroll === "transitional") {
+      return VIEW_TYPE_TRANSITIONAL;
     }
 
     //is fixed layout ignore flow
@@ -702,7 +727,7 @@ function ReaderView(options) {
    * @param {string} elementCfi CFI of the element to be shown
    * @param {object} initiator optional
    */
-  this.openSpineItemElementCfi = function(idref, elementCfi, initiator) {
+  this.openSpineItemElementCfi = function(idref, elementCfi, initiator, transitionPage) {
 
     var spineItem = getSpineItem(idref);
 
@@ -715,7 +740,7 @@ function ReaderView(options) {
       pageData.setElementCfi(elementCfi);
     }
 
-    openPage(pageData, 0);
+    openPage(pageData, 0, transitionPage);
 
     return true;
   };
@@ -757,15 +782,14 @@ function ReaderView(options) {
   };
 
   // dir: 0 => new or same page, 1 => previous, 2 => next
-  function openPage(pageRequest, dir) {
+  function openPage(pageRequest, dir, isTransition) {
 
     initViewForItem(pageRequest.spineItem, function(isViewChanged) {
 
       if (!isViewChanged) {
         _currentView.setViewSettings(_viewerSettings);
       }
-
-      _currentView.openPage(pageRequest, dir);
+      _currentView.openPage(pageRequest, dir, isTransition);
     });
   }
 
