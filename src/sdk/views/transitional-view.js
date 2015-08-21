@@ -225,7 +225,7 @@ function ScrollView(options, isContinuousScroll, reader) {
 
   function transitTo() {
 
-    if (_inTransit && !_isLoadingNewSpineItemOnPageRequest) {
+    if (_inTransit) {
       _inTransit = false;
       $(_$contentFrame[0]).css({'top': '0', 'left': _$contentFrame.width() + 'px'});
       $(_$contentFrame[0]).css({'opacity': '1'});
