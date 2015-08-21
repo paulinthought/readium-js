@@ -23,8 +23,9 @@
 //  OF THE POSSIBILITY OF SUCH DAMAGE.
 
 var $ = require('jquery')
-var Interpreter = require('epub-cfi').Interpreter
+var Interpreter = require('@hmh/epub-cfi').Interpreter;
 var URI = require('URIjs')
+var EndsWith = require('../helpers/ends-with');
 
 /**
  *
@@ -181,6 +182,10 @@ function InternalLinksSupport(reader) {
     var epubContentDocument = $iframe[0].contentDocument;
 
     $('a', epubContentDocument).click(function(clickEvent) {
+      if (clickEvent.currentTarget.attributes["data-glossary"] || clickEvent.currentTarget.attributes["data-ignore"]) {
+        return;
+      }
+
       // Check for both href and xlink:href attribute and get value
       var href;
       if (clickEvent.currentTarget.attributes["xlink:href"]) {
@@ -220,4 +225,4 @@ function InternalLinksSupport(reader) {
 
 }
 
-module.exports = InternalLinksSupport
+module.exports = InternalLinksSupport;

@@ -43,7 +43,7 @@ var ViewerSettings = require('../models/viewer-settings')
  * @param enableBookStyleOverrides
  * @constructor
  */
-function OnePageView(options, classes, enableBookStyleOverrides, reader) {
+function SimpleOnePageView(options, classes, enableBookStyleOverrides, reader) {
 
   _.extend(this, Backbone.Events);
 
@@ -268,7 +268,9 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
 
 
   // fixed layout does not apply user styles to publisher content, but reflowable scroll view does
-  var _enableBookStyleOverrides = enableBookStyleOverrides || false;
+  //var _enableBookStyleOverrides = enableBookStyleOverrides || false;
+  //TODO: get a grip of this
+  var _enableBookStyleOverrides = false;
 
   var _meta_size = {
     width: 0,
@@ -294,11 +296,11 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
 
   this.render = function() {
 
-    var template = loadTemplate("single_page_frame", {});
+    var template = loadTemplate("simple_single_page_frame", {});
 
     _$el = $(template);
 
-    _$scaler = $("#scaler", _$el);
+    _$scaler = $('<div></div>'); // $("#scaler", _$el);
 
     CSSTransition(_$el, "all 0 ease 0");
 
@@ -315,15 +317,20 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
       _$el.css("transform", "translateZ(0)");
     }
 
-    //setting this too early causes IE11 to fix a width and height that is not the full viewport 100%
-    // _$el.css("height", "100%");
-    // _$el.css("width", "100%");
+    _$el.css("height", "100%");
+    _$el.css("width", "100%");
+
+
+     //to allow fullscreen
+    _$el.attr("allowfullscreen", "true");
+    _$el.attr("webkitallowfullscreen", "true");
+    _$el.attr("mozAllowfullscreen", "true");
 
     for (var i = 0, count = classes.length; i < count; i++) {
       _$el.addClass(classes[i]);
     }
 
-    _$iframe = $("iframe", _$el);
+    _$iframe = _$el; // $("iframe", _$el);
 
     return this;
   };
@@ -753,7 +760,7 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
         self.hideIFrame();
       }
 
-      self.trigger(OnePageView.SPINE_ITEM_OPEN_START, _$iframe, _currentSpineItem);
+      self.trigger(SimpleOnePageView.SPINE_ITEM_OPEN_START, _$iframe, _currentSpineItem);
       _iframeLoader.loadIframe(_$iframe[0], src, function(success) {
 
         if (success && callback) {
@@ -902,6 +909,6 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
   }
 }
 
-OnePageView.SPINE_ITEM_OPEN_START = "SpineItemOpenStart";
+SimpleOnePageView.SPINE_ITEM_OPEN_START = "SpineItemOpenStart";
 
-module.exports = OnePageView
+module.exports = SimpleOnePageView

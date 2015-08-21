@@ -34,11 +34,12 @@ var InternalEvents = require('../internal-events')
 var isIframeAlive = require('../helpers/is-iframe-alive')
 var loadTemplate = require('../helpers/load-template')
 var Margins = require('../helpers/margins')
-var OnePageView = require('./one-page-view')
+var OnePageView = require('./simple-one-page-view')
 var PageOpenRequest = require('../models/page-open-request')
 var setStyles = require('../helpers/set-styles')
 var ViewerSettings = require('../models/viewer-settings')
 
+var ScrollView = require('./scroll-view');
 
 /**
  * Renders content inside a scrollable view port
@@ -47,7 +48,7 @@ var ViewerSettings = require('../models/viewer-settings')
  * @param reader
  * @constructor
  */
-function ScrollView(options, isContinuousScroll, reader) {
+function SimpleScrollView(options, isContinuousScroll, reader) {
 
   var _DEBUG = false;
 
@@ -64,6 +65,7 @@ function ScrollView(options, isContinuousScroll, reader) {
   var _userStyles = options.userStyles;
   var _deferredPageRequest;
   var _$contentFrame;
+  var _$contentFrameIframe;
   var _$el;
 
   var _stopTransientViewUpdate = false;
@@ -82,12 +84,14 @@ function ScrollView(options, isContinuousScroll, reader) {
 
   this.render = function() {
 
-    var template = loadTemplate("scrolled_book_frame", {});
+    var template = loadTemplate("simple_scrolled_book_frame", {});
 
     _$el = $(template);
     _$viewport.append(_$el);
 
-    _$contentFrame = $("#scrolled-content-frame", _$el);
+    _$contentFrame = _$el;
+
+    // _$contentFrame = $("#scrolled-content-frame", _$el);
     _$contentFrame.css("overflow", "");
     _$contentFrame.css("overflow-y", "auto");
     _$contentFrame.css("overflow-x", "hidden");
@@ -111,13 +115,6 @@ function ScrollView(options, isContinuousScroll, reader) {
     // _$contentFrame.css("border", "20px solid red");
 
     self.applyStyles();
-
-    var lazyScroll = _.debounce(onScroll, ON_SCROLL_TIME_DALAY);
-
-    _$contentFrame.on('scroll', function(e) {
-      lazyScroll(e);
-      onScrollDirect();
-    });
 
     return self;
   };
@@ -271,8 +268,9 @@ function ScrollView(options, isContinuousScroll, reader) {
   }
 
   function scrollTo(offset, pageRequest) {
+    if (!_$contentFrameIframe) return;
 
-    _$contentFrame[0].scrollTop = offset;
+    _$contentFrameIframe[0].body.scrollTop = offset;
 
     if (pageRequest) {
       onPaginationChanged(pageRequest.initiator, pageRequest.spineItem, pageRequest.elementId);
@@ -372,9 +370,49 @@ function ScrollView(options, isContinuousScroll, reader) {
               } else {
                 updatePageViewSize(pageView);
               }
+
+              if (isIframeAlive(iframe)) {
+                var win = iframe.contentWindow;
+                var doc = iframe.contentDocument;
+
+                var docHeightAfter = parseInt(Math.round(parseFloat(win.getComputedStyle(doc.documentElement).height))); //body can be shorter!
+                var iframeHeightAfter = parseInt(Math.round(parseFloat(window.getComputedStyle(iframe).height)));
+
+                var newdiff = iframeHeightAfter - docHeightAfter;
+                if (Math.abs(newdiff) > 4) {
+                  if (_DEBUG) {
+                    console.error("## IFRAME HEIGHT ADJUST: " + href + "  [" + newdiff + "]<" + initialContentHeight + " -- " + previousPolledContentHeight + ">");
+                    console.log(msg);
+                  }
+
+                  tryAgainFunc(tryAgain);
+                  return;
+                } else {
+                  if (_DEBUG) {
+                    console.log(">> IFRAME HEIGHT ADJUSTED OKAY: " + href + "  [" + diff + "]<" + initialContentHeight + " -- " + previousPolledContentHeight + ">");
+                    // console.log(msg);
+                  }
+                }
+              } else {
+                if (_DEBUG) {
+                  console.log("tryAgainFunc ! win && doc (iFrame disposed?)");
+                }
+
+                if (callback) callback(false);
+                return;
+              }
+            } else {
+              //if (_DEBUG)
+              // console.debug("IFRAME HEIGHT NO NEED ADJUST: " + href);
+              // console.log(msg);
+            }
+          } else {
+            if (_DEBUG) {
+              console.log("tryAgainFunc ! win && doc (iFrame disposed?)");
             }
 
-            return tryAgainFunc(tryAgain);
+            if (callback) callback(false);
+            return;
           }
         } catch (ex) {
           console.error(ex);
@@ -520,10 +558,17 @@ function ScrollView(options, isContinuousScroll, reader) {
 
   function setFrameSizesToRectangle(rectangle) {
 
-    _$contentFrame.css("left", rectangle.left);
-    _$contentFrame.css("top", rectangle.top);
-    _$contentFrame.css("right", rectangle.right);
-    _$contentFrame.css("bottom", rectangle.bottom);
+    _$contentFrame.css('height', '100%');
+
+     //to allow fullscreen
+    _$contentFrame.attr("allowfullscreen", "true");
+    _$contentFrame.attr("webkitallowfullscreen", "true");
+    _$contentFrame.attr("mozAllowfullscreen", "true");
+
+    // _$contentFrame.css("left", rectangle.left);
+    // _$contentFrame.css("top", rectangle.top);
+    // _$contentFrame.css("right", rectangle.right);
+    // _$contentFrame.css("bottom", rectangle.bottom);
 
   }
 
@@ -569,6 +614,8 @@ function ScrollView(options, isContinuousScroll, reader) {
       reader);
 
     pageView.render();
+
+
     if (_viewSettings) pageView.setViewSettings(_viewSettings);
 
     if (!isTemporaryView) {
@@ -679,9 +726,22 @@ function ScrollView(options, isContinuousScroll, reader) {
 
     _$contentFrame.append(loadedView.element());
 
+
     loadedView.loadSpineItem(spineItem, function(success, $iframe, spineItem, isNewlyLoaded, context) {
 
       if (success) {
+
+        var lazyScroll = _.debounce(onScroll, ON_SCROLL_TIME_DALAY);
+
+        // window.theBody = $(_$contentFrame.find('iframe')[0].contentDocument.body)
+        // $(_$contentFrame.find('iframe')[0].contentDocument.body).on('scroll', function(e) {
+        // CHANGE
+        _$contentFrameIframe = $($iframe[0].contentDocument);
+
+        _$contentFrameIframe.on('scroll', function(e) {
+          lazyScroll(e);
+          onScrollDirect();
+        });
 
         var continueCallback = function(successFlag) {
           onPageViewLoaded(loadedView, success, $iframe, spineItem, isNewlyLoaded, context);
@@ -854,7 +914,6 @@ function ScrollView(options, isContinuousScroll, reader) {
     }
 
     if (scrollTop() != topOffset) {
-
       _isSettingScrollPosition = true;
       scrollTo(topOffset, pageRequest);
 
@@ -882,7 +941,7 @@ function ScrollView(options, isContinuousScroll, reader) {
   }
 
   function scrollTop() {
-    return _$contentFrame[0].scrollTop;
+    return _$contentFrameIframe ? _$contentFrameIframe[0].body.scrollTop : 0;
   }
 
   function scrollBottom() {
@@ -894,7 +953,7 @@ function ScrollView(options, isContinuousScroll, reader) {
   }
 
   function scrollHeight() {
-    return _$contentFrame[0].scrollHeight;
+    return _$contentFrameIframe ? _$contentFrameIframe[0].body.scrollHeight : 0;
   }
 
   this.openPageNext = function(initiator) {
@@ -969,7 +1028,7 @@ function ScrollView(options, isContinuousScroll, reader) {
       bottom: 0
     };
 
-    range.top = pageView.element().position().top + scrollTop();
+    range.top = pageView.element()[0].contentDocument.body.scrollTop;
     range.bottom = range.top + pageView.getCalculatedPageHeight();
 
     return range;
@@ -1107,22 +1166,11 @@ function ScrollView(options, isContinuousScroll, reader) {
   };
 
   this.getFirstVisibleMediaOverlayElement = function() {
-    var viewPortRange = getVisibleRange();
-
     var moElement = undefined;
-    var normalizedRange = {
-      top: 0,
-      bottom: 0
-    };
-    var pageViewRange;
-
     var steppedToVisiblePage = false;
 
     forEachItemView(function(pageView) {
-      pageViewRange = getPageViewRange(pageView);
-
-      normalizedRange.top = Math.max(pageViewRange.top, viewPortRange.top) - pageViewRange.top;
-      normalizedRange.bottom = Math.min(pageViewRange.bottom, viewPortRange.bottom) - pageViewRange.top;
+      var normalizedRange = getPageViewRange(pageView);
 
       if (rangeLength(normalizedRange) > 0) {
         steppedToVisiblePage = true;
@@ -1238,7 +1286,7 @@ function ScrollView(options, isContinuousScroll, reader) {
       top: 0,
       bottom: 0
     };
-    elementRange.top = $element.offset().top + pageRange.top;
+    elementRange.top = $element.offset().top; // + pageRange.top;
     elementRange.bottom = elementRange.top + $element.height();
 
     return elementRange;
@@ -1278,4 +1326,4 @@ function ScrollView(options, isContinuousScroll, reader) {
   }
 }
 
-module.exports = ScrollView
+module.exports = SimpleScrollView

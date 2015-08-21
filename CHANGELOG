@@ -1,0 +1,120 @@
+# Change log
+
+## [0.5.0] - 2015-08-14
+### Changed
+- Disabled annotations.
+
+## [0.4.27] - 2015-07-30
+## Fixed
+- Prevent width being set on content-doc-iframe, causes problems with slow loading pages IE11, gets set too early and content doesn't fill viewport
+
+## [0.4.26] - 2015-07-29
+## Fixed
+- Adjust height now tries 10 intervals of 300ms so that slow content has a change to adjust the
+  height.
+
+## [0.4.24] - 2015-07-22
+### Changed
+- Prevent default behaviour for click on `a` tags with `data-ignore` on it.
+
+## [0.4.23] - 2015-07-20
+### Changed
+- Fix to prevent IE throwing an exception when Readium parses undefined iframe attribute using URI.js
+
+## [0.4.22] - 2015-07-14
+### Changed
+- Prevent clicks on glossary.
+
+## [0.4.21] - 2015-07-14
+### Changed
+- Annotations to match new structure.
+
+## [0.4.20] - 2015-06-30
+### Fixed
+- Fix to prevent Readium injecting in it's own styles into ePub content
+
+## [0.4.18] - 2015-06-30
+### Fixed
+- Made rehydration slightly more robust so that if any annotation fails to rehydrate (generally due
+  to a wrong serialisation from rangy) it still renders the rest.
+- Prevent an annotation from being createad if rangy can't deserialised it.
+
+## [0.4.17] - 2015-06-26
+### Changed
+- Views updated to add allowfullscreen attribute on Readium iframe
+
+## [0.4.16] - 2015-06-26
+### Fixed
+- Open sidebar on an anontation's click
+
+## [0.4.15] - 2015-06-26
+### Changed
+- Highlights to resemble the new structure.
+
+## [0.4.14] - 2015-06-21
+### Fixed
+- Selection around edges of an element.
+
+## [0.4.13] - 2015-06-09
+
+- Fixed for empty spans created for unused selections
+
+## [0.4.12] - 2015-06-09
+
+- Prevent list iteration if there's no list
+
+## [0.4.11] - 2015-06-09
+
+- Added context menu to text selection
+
+## [0.4.6] - 2015-06-09
+
+- Rehydration of rangy based highlights
+
+## [0.4.5] - 2015-06-04
+
+- Default color updated, objectid parsed from CFI to be more reliable
+
+## [0.4.4] - 2015-06-04
+
+- Update list of highlihgts based on store.
+- Click to go to highlight
+
+## [0.4.3] - 2015-06-04
+
+- Highlight styling markup updated
+
+## [0.4.2] - 2015-06-04
+
+- Added colours and decorations
+
+## [0.4.1] - 2015-06-04
+
+- CAS Service integration
+
+## [0.4.0] - 2015-05-29
+
+- Annotations through Rangy
+
+## [0.3.2] - 2015-05-27
+
+- Fixed audio to work with scroll on our custom scrollview
+
+## [0.3.1] - 2015-05-19
+
+### Changed
+
+- Use `epub-cfi` from scoped package `@hmh/epub-cfi`.
+
+## [0.3.0] - 2015-05-19
+
+### Changed
+
+- Added `$` to `Backbone.$` whenever `Backbone.View` is used as the npm version of `Backbone`
+  doesn't require jQuery on its own.
+
+## [0.2.0] - 2015-05-18
+
+### Added
+
+- `Readium.SDK#parseToc(xml, spine)` now links Readium spine items with ePubJS' TOC structure.
