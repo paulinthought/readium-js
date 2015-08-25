@@ -66,6 +66,7 @@ function ScrollView(options, isContinuousScroll, reader) {
   var _lastView;
   var _inTransit = true;
   var _isHmhTransition = false;
+  var _ltr = false;   // set to true to transition from left instead of from right
   var _$contentFrame;
   var _$el;
 
@@ -132,7 +133,11 @@ function ScrollView(options, isContinuousScroll, reader) {
       return;
     }
 
-    transitTo();
+// var viewPage = lastLoadedView();
+// var otherViewPage = firstLoadedView();
+// debugger;
+
+    transition();
 
   }
 
@@ -223,17 +228,27 @@ function ScrollView(options, isContinuousScroll, reader) {
     }
   }
 
-  function transitTo() {
+  function transition() {
 
     if (_inTransit) {
+      var dualWidth = 2* _$contentFrame.width();
+      var singleWidth = _$contentFrame.width();
+      var currentScrollPosition = _$contentFrame.children().first().offset().top;
       _inTransit = false;
-      $(_$contentFrame[0]).css({'top': '0', 'left': _$contentFrame.width() + 'px'});
-      $(_$contentFrame[0]).css({'opacity': '1'});
-      $(_$contentFrame[0]).animate({'left': '-='+ _$contentFrame.width() +'px'}, 'slow');
-
+      $(_$contentFrame[0]).css({'top': '0', 'left': '0', 'width': dualWidth + 'px'});
+      _$contentFrame.children().last().css({'position': 'absolute', 'top': '0', 'left': (_ltr ? singleWidth : -singleWidth) +'px', 'width': singleWidth +'px'})
+   
+      $(_$contentFrame[0]).animate({'left': (_ltr ? '+=' : '-=') + singleWidth +'px'}, 'slow', function(){
+        _$contentFrame.children().first().remove();
+        _$contentFrame.children().last().css({'top': '0', 'left': '0'}); 
+        $(_$contentFrame[0]).css({'top': '0', 'left': '0', 'overflowX': 'hidden', 'overflowY': 'auto', 'width': singleWidth +'px'}); 
+        removePageView(_lastView);
+      }); 
     }
 
   }
+
+
 
 
   function updatePageViewSizeAndAdjustScroll(pageView) {
@@ -375,9 +390,7 @@ function ScrollView(options, isContinuousScroll, reader) {
   }
 
   function removePageView(pageView) {
-
     pageView.element().remove();
-
   }
 
 
@@ -533,8 +546,10 @@ function ScrollView(options, isContinuousScroll, reader) {
   }
 
   function loadSpineItem(spineItem, callback) {
-
-    removeLoadedItems();
+    
+    if (!_isHmhTransition) {
+      removeLoadedItems();
+    }
     _inTransit = true;
 
     var scrollPos = scrollTop();
@@ -542,10 +557,6 @@ function ScrollView(options, isContinuousScroll, reader) {
     var loadedView = createPageViewForSpineItem();
 
     _$contentFrame.append(loadedView.element());
-
-    if (_isHmhTransition) {
-      $(_$contentFrame[0]).css({'opacity': '0'});
-    }
 
     loadedView.loadSpineItem(spineItem, function(success, $iframe, spineItem, isNewlyLoaded, context) {
 
@@ -598,8 +609,7 @@ function ScrollView(options, isContinuousScroll, reader) {
     _stopTransientViewUpdate = true;
     _isHmhTransition = isTransition;
 
-
-    //local helper function
+window.cf = _$contentFrame;    //local helper function
     var doneLoadingSpineItem = function(pageView, pageRequest) {
       _deferredPageRequest = undefined;
       openPageViewElement(pageView, pageRequest);
@@ -631,7 +641,7 @@ function ScrollView(options, isContinuousScroll, reader) {
             if (pageView.currentSpineItem() === _deferredPageRequest.spineItem) {
               doneLoadingSpineItem(pageView, _deferredPageRequest);
             } else { //while we where waiting for load new request come
-              self.openPage(_deferredPageRequest); //recursion
+              self.openPage(_deferredPageRequest, 0, _isHmhTransition); //recursion
             }
           } else {
             onPaginationChanged(pageRequest.initiator, pageRequest.spineItem, pageRequest.elementId);
@@ -711,7 +721,6 @@ function ScrollView(options, isContinuousScroll, reader) {
     } else if (pageRequest.firstPage) {
 
       topOffset = 0;
-      $(_$contentFrame[0]).css({'opacity': '1'});
     } else if (pageRequest.lastPage) {
       pageCount = calculatePageCount();
 
@@ -1125,7 +1134,7 @@ function ScrollView(options, isContinuousScroll, reader) {
       var openPageRequest = new PageOpenRequest(spineItem, initiator);
       openPageRequest.scrollTop = elementRange.top;
 
-      self.openPage(openPageRequest);
+      self.openPage(openPageRequest, 0, _isHmhTransition);
     }
 
   }
