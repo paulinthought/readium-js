@@ -65,8 +65,8 @@ function ScrollView(options, isContinuousScroll, reader) {
   var _deferredPageRequest;
   var _lastView;
   var _inTransit = true;
-  var _isHmhTransition = false;
-  var _ltr = false;   // set to true to transition from left instead of from right
+  var _isHmhTransition = false; // SET VIA this.openPage() PER PAGE TO ENABLE OR DISABLE THE TRANSITION EFFECT
+  var _rtl = true;   // TODO: implement set to false to transition from left instead of from right
   var _$contentFrame;
   var _$el;
 
@@ -132,10 +132,6 @@ function ScrollView(options, isContinuousScroll, reader) {
       callback();
       return;
     }
-
-// var viewPage = lastLoadedView();
-// var otherViewPage = firstLoadedView();
-// debugger;
 
     transition();
 
@@ -234,14 +230,16 @@ function ScrollView(options, isContinuousScroll, reader) {
       var dualWidth = 2* _$contentFrame.width();
       var singleWidth = _$contentFrame.width();
       var currentScrollPosition = _$contentFrame.children().first().offset().top;
-      _inTransit = false;
+      _inTransit = false;    
+
       $(_$contentFrame[0]).css({'top': '0', 'left': '0', 'width': dualWidth + 'px'});
-      _$contentFrame.children().last().css({'position': 'absolute', 'top': '0', 'left': (_ltr ? singleWidth : -singleWidth) +'px', 'width': singleWidth +'px'})
-   
-      $(_$contentFrame[0]).animate({'left': (_ltr ? '+=' : '-=') + singleWidth +'px'}, 'slow', function(){
+      _$contentFrame.children().last().css({'position': 'absolute', 'top': '0', 'left':  singleWidth +'px', 'width': singleWidth +'px'})
+
+      $(_$contentFrame[0]).animate({'left': '-=' + singleWidth +'px'}, 1200, function(){
         _$contentFrame.children().first().remove();
-        _$contentFrame.children().last().css({'top': '0', 'left': '0'}); 
+        
         $(_$contentFrame[0]).css({'top': '0', 'left': '0', 'overflowX': 'hidden', 'overflowY': 'auto', 'width': singleWidth +'px'}); 
+        _$contentFrame.children().last().css({'top': '0', 'left': '0'});
         removePageView(_lastView);
       }); 
     }
@@ -609,7 +607,7 @@ function ScrollView(options, isContinuousScroll, reader) {
     _stopTransientViewUpdate = true;
     _isHmhTransition = isTransition;
 
-window.cf = _$contentFrame;    //local helper function
+    //local helper function
     var doneLoadingSpineItem = function(pageView, pageRequest) {
       _deferredPageRequest = undefined;
       openPageViewElement(pageView, pageRequest);
