@@ -292,9 +292,9 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
     return _isIframeLoaded;
   };
 
-  this.render = function() {
+  this.render = function(spineItem) {
 
-    var template = loadTemplate("single_page_frame", {});
+    var template = (spineItem) ? loadTemplate("single_page_frame", {spineIndex: spineItem.index}) : loadTemplate("single_page_frame", {});
 
     _$el = $(template);
 
@@ -746,12 +746,10 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
       _currentSpineItem = spineItem;
       var src = _spine.package.resolveRelativeUrl(spineItem.href);
 
-      //if (spineItem && spineItem.isFixedLayout())
-      if (true) // both fixed layout and reflowable documents need hiding due to flashing during layout/rendering
-      {
-        //hide iframe until content is scaled
-        self.hideIFrame();
-      }
+
+      //hide iframe until content is scaled
+      self.hideIFrame();
+      
 
       self.trigger(OnePageView.SPINE_ITEM_OPEN_START, _$iframe, _currentSpineItem);
       _iframeLoader.loadIframe(_$iframe[0], src, function(success) {
@@ -762,7 +760,7 @@ function OnePageView(options, classes, enableBookStyleOverrides, reader) {
           };
 
           if (isIframeAlive(_$iframe[0])) {
-            onIFrameLoad(success); // applies styles
+            onIFrameLoad(success); // apples styles
 
             func();
           } else {

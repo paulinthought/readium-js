@@ -39,6 +39,7 @@ var PageOpenRequest = require('../models/page-open-request')
 var setStyles = require('../helpers/set-styles')
 var ViewerSettings = require('../models/viewer-settings')
 
+// TODO: Remove display logic from this file so it become a pure view which we can load into the viewport later
 
 /**
  * Renders content inside a scrollable view port
@@ -84,14 +85,13 @@ function ScrollView(options, isContinuousScroll, reader) {
     return isContinuousScroll;
   };
 
-  this.render = function() {
+  this.render = function(spineItem) {
 
-    var template = loadTemplate("scrolled_book_frame", {});
-
+    var template = spineItem ? loadTemplate("scrolled_book_frame", {spineIndex: spineItem.index}) : loadTemplate("scrolled_book_frame", {});
     _$el = $(template);
-    _$viewport.append(_$el);
+    //_$viewport.append(_$el);
 
-    _$contentFrame = $("#scrolled-content-frame", _$el);
+    _$contentFrame = $("#scrolled-content-frame-"+spineItem.index, _$el);
     _$contentFrame.css("overflow", "");
     _$contentFrame.css("overflow-y", "auto");
     _$contentFrame.css("overflow-x", "hidden");
@@ -433,6 +433,30 @@ function ScrollView(options, isContinuousScroll, reader) {
     }, false);
   };
 
+
+  function createInnerView(spineItem) {
+
+    options.disablePageTransitions = true; // force
+
+    var pageView = new OnePageView(
+      options, ["content-doc-frame"],
+      true, //enableBookStyleOverrides
+      reader);
+
+    pageView.render(spineItem);
+
+    if (_viewSettings) {
+      pageView.setViewSettings(_viewSettings);
+    }
+    pageView.element().data("pageView", pageView);
+
+    pageView.decorateIframe();
+
+    return pageView;     
+       
+  }
+
+
   function createPageViewForSpineItem(isTemporaryView) {
 
     options.disablePageTransitions = true; // force
@@ -545,14 +569,9 @@ function ScrollView(options, isContinuousScroll, reader) {
 
   function loadSpineItem(spineItem, callback) {
     
-    if (!_isHmhTransition) {
-      removeLoadedItems();
-    }
     _inTransit = true;
 
-    var scrollPos = scrollTop();
-
-    var loadedView = createPageViewForSpineItem();
+    var loadedView = createInnerView(spineItem);
 
     _$contentFrame.append(loadedView.element());
 
@@ -610,14 +629,15 @@ function ScrollView(options, isContinuousScroll, reader) {
     //local helper function
     var doneLoadingSpineItem = function(pageView, pageRequest) {
       _deferredPageRequest = undefined;
-      openPageViewElement(pageView, pageRequest);
+      //openPageViewElement(pageView, pageRequest);
       _stopTransientViewUpdate = false;
-      updateTransientViews(pageView);
+      //updateTransientViews(pageView);
+      console.log('spine loaded', pageRequest)
     };
 
-    if (_isHmhTransition) {
-      _lastView = lastLoadedView();
-    }
+    // if (_isHmhTransition) {
+    //   _lastView = lastLoadedView();
+    // }
 
 
     if (pageRequest.spineItem) {
@@ -649,6 +669,52 @@ function ScrollView(options, isContinuousScroll, reader) {
       }
     } else {
       doneLoadingSpineItem(undefined, pageRequest);
+    }
+  };
+
+  this.getContent = function() {
+    return _$contentFrame;
+  }
+
+  // copy of doneLoadingSpineItem. We can probably force completion of any redrawing and events etc. manually from here
+  this.displayPage = function() {
+    console.log('vp', _$viewport);
+    openPageViewElement(pageView, pageRequest);
+    _stopTransientViewUpdate = false;
+    updateTransientViews(pageView);
+  }
+
+  this.initPage = function(pageRequest, dir, isTransition) {
+
+    _isHmhTransition = isTransition;
+
+    var doneLoadingSpineItem = function(pageView, pageRequest) {
+      _deferredPageRequest = undefined;
+      //openPageViewElement(pageView, pageRequest);
+      _stopTransientViewUpdate = false;
+      //updateTransientViews(pageView);
+    };
+
+    if (pageRequest.spineItem) {
+
+      var pageView = findPageViewForSpineItem(pageRequest.spineItem);
+      if (pageView) {
+        doneLoadingSpineItem(pageView, pageRequest);
+      } else {
+        _deferredPageRequest = pageRequest;
+        _isLoadingNewSpineItemOnPageRequest = true;
+
+        loadSpineItem(pageRequest.spineItem, function(pageView) {
+
+          setTimeout(function() {
+            _isLoadingNewSpineItemOnPageRequest = false;
+          }, ON_SCROLL_TIME_DALAY + 100);
+  
+          doneLoadingSpineItem(pageView, _deferredPageRequest);
+        });
+      }
+    } else {
+      console.error('Page Load error', pageRequest);
     }
   };
 

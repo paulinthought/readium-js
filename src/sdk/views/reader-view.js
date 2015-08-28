@@ -86,6 +86,7 @@ function ReaderView(options) {
 
   var self = this;
   var _currentView = undefined;
+  var _views = [];
   var _package = undefined;
   var _spine = undefined;
   var _viewerSettings = new ViewerSettings({});
@@ -213,6 +214,8 @@ function ReaderView(options) {
   //based on https://docs.google.com/spreadsheet/ccc?key=0AoPMUkQhc4wcdDI0anFvWm96N0xRT184ZE96MXFRdFE&usp=drive_web#gid=0 document
   function deduceDesiredViewType(spineItem) {
 
+debugger;
+
     //check settings
     if (_viewerSettings.scroll === "scroll-doc") {
       return VIEW_TYPE_SCROLLED_DOC;
@@ -330,6 +333,7 @@ function ReaderView(options) {
 
   }
 
+
   /**
    * Returns a list of the currently active spine items
    *
@@ -438,55 +442,57 @@ function ReaderView(options) {
       self.setStyles(openBookData.styles);
     }
 
-    var pageRequestData = undefined;
+    // var pageRequestData = undefined;
 
-    if (openBookData.openPageRequest) {
+    // if (openBookData.openPageRequest) {
 
-      if (openBookData.openPageRequest.idref || (openBookData.openPageRequest.contentRefUrl && openBookData.openPageRequest.sourceFileHref)) {
-        pageRequestData = openBookData.openPageRequest;
-      } else {
-        console.log("Invalid page request data: idref required!");
-      }
-    }
+    //   if (openBookData.openPageRequest.idref || (openBookData.openPageRequest.contentRefUrl && openBookData.openPageRequest.sourceFileHref)) {
+    //     pageRequestData = openBookData.openPageRequest;
+    //   } else {
+    //     console.log("Invalid page request data: idref required!");
+    //   }
+    // }
 
-    var fallback = false;
-    if (pageRequestData) {
+    // var fallback = false;
+    // if (pageRequestData) {
 
-      pageRequestData = openBookData.openPageRequest;
+    //   pageRequestData = openBookData.openPageRequest;
 
-      try {
-        if (pageRequestData.idref) {
+    //   try {
+    //     if (pageRequestData.idref) {
 
-          if (pageRequestData.spineItemPageIndex) {
-            fallback = !self.openSpineItemPage(pageRequestData.idref, pageRequestData.spineItemPageIndex, self);
-          } else if (pageRequestData.elementCfi) {
-            fallback = !self.openSpineItemElementCfi(pageRequestData.idref, pageRequestData.elementCfi, self);
-          } else {
-            fallback = !self.openSpineItemPage(pageRequestData.idref, 0, self);
-          }
-        } else {
-          fallback = !self.openContentUrl(pageRequestData.contentRefUrl, pageRequestData.sourceFileHref, self);
-        }
-      } catch (err) {
-        console.error("openPageRequest fail: fallback to first page!")
-        console.log(err);
-        fallback = true;
-      }
-    } else {
-      fallback = true;
-    }
+    //       if (pageRequestData.spineItemPageIndex) {
+    //         fallback = !self.openSpineItemPage(pageRequestData.idref, pageRequestData.spineItemPageIndex, self);
+    //       } else if (pageRequestData.elementCfi) {
+    //         fallback = !self.openSpineItemElementCfi(pageRequestData.idref, pageRequestData.elementCfi, self);
+    //       } else {
+    //         fallback = !self.openSpineItemPage(pageRequestData.idref, 0, self);
+    //       }
+    //     } else {
+    //       fallback = !self.openContentUrl(pageRequestData.contentRefUrl, pageRequestData.sourceFileHref, self);
+    //     }
+    //   } catch (err) {
+    //     console.error("openPageRequest fail: fallback to first page!")
+    //     console.log(err);
+    //     fallback = true;
+    //   }
+    // } else {
+    //   fallback = true;
+    // }
 
-    if (fallback) { // if we where not asked to open specific page we will open the first one
+    // if (fallback) { // if we where not asked to open specific page we will open the first one
 
-      var spineItem = _spine.first();
-      if (spineItem) {
-        var pageOpenRequest = new PageOpenRequest(spineItem, self);
-        pageOpenRequest.setFirstPage();
-        openPage(pageOpenRequest, 0);
-      }
+    //   var spineItem = _spine.first();
+    //   if (spineItem) {
+    //     var pageOpenRequest = new PageOpenRequest(spineItem, self);
+    //     pageOpenRequest.setFirstPage();
+    //     openPage(pageOpenRequest, 0);
+    //   }
 
-    }
-
+    // }
+//
+    openViews();
+debugger;
   };
 
   function onMediaPlayerStatusChanged(status) {
@@ -794,6 +800,35 @@ function ReaderView(options) {
     });
   }
 
+
+  /**
+  * Populate array of _views with instantiated pageViews 
+  */
+  function openViews() {
+    
+    var isTransition = true;
+
+    _spine.items.map(function(spineItem) {
+      var viewCreationParams = {
+        $viewport: _$el,
+        spine: _spine,
+        userStyles: _userStyles,
+        bookStyles: _bookStyles,
+        iframeLoader: _iframeLoader
+      };
+      var tempView = self.createViewForType(VIEW_TYPE_TRANSITIONAL, viewCreationParams);
+      tempView.render(spineItem);
+      tempView.initPage(new PageOpenRequest(spineItem, self), 0, isTransition);
+      tempView.setViewSettings(_viewerSettings);
+      _views.push(tempView);
+    })
+    
+    _currentView = _views[0].getContent();
+
+    // TODO: Attach to viewport
+
+debugger;
+  }
 
   /**
    * Opens page index of the spine item with idref provided

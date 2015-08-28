@@ -1,3 +1,5 @@
+var $ = require('jquery')
+
 /**
  *
  * @param name
@@ -5,7 +7,18 @@
  * @returns {Helpers.loadTemplate.cache}
  */
 function loadTemplate(name, params) {
-  return loadTemplate.cache[name];
+  var template = loadTemplate.cache[name];
+  if (typeof params.spineIndex !== 'undefined') {
+    if ($(template).attr('id')) {
+      var id = $(template).attr('id');
+      template = template.replace(id, id + '-' + params.spineIndex);
+    } 
+    if ($(template).children().first().attr('id')) {
+      var cid = $(template).children().first().attr('id');
+      template = template.replace(cid, cid + '-' + params.spineIndex);
+    } 
+  }
+  return template;
 };
 
 /**
